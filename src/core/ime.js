@@ -71,9 +71,25 @@ export class ImeCore {
   }
 
   setMode(mode) {
-    this.cancelComposition();
+    if (mode === "latin") {
+      this._dismissForLatin();
+    }
     this.setState({ mode });
     this.emit("mgl-ime-mode-change", { mode });
+  }
+
+  /**
+   * Shift / ABC → English: close the candidate panel and keep any already
+   * inserted preview. Do not fetch next-word suggestions.
+   */
+  _dismissForLatin() {
+    const preview = this.state.preview;
+    const hadComp = this.state.composing || this.state.previewLen > 0;
+    this._session.next();
+    this.setState(clearCompositionFields(this.state));
+    if (hadComp) {
+      this.emit("mgl-ime-composition-end", { text: preview, cancelled: false });
+    }
   }
 
   setProfile(profile) {
@@ -166,6 +182,10 @@ export class ImeCore {
   }
 
   async queryCandidates(input, trigger = "typing") {
+    if (this.state.mode === "latin") {
+      this.setState(withCandidates(this.state, []));
+      return;
+    }
     const gen = this._session.next();
     if (!input) {
       this.setState(withCandidates(this.state, []));
@@ -176,17 +196,21 @@ export class ImeCore {
         trigger,
         composition: this.state.composition,
       });
-      if (this._session.isStale(gen)) return;
+      if (this._session.isStale(gen) || this.state.mode === "latin") return;
       this.setState(withCandidates(this.state, list));
       this.emit("mgl-ime-candidates", { candidates: list, trigger });
     } catch {
-      if (this._session.isStale(gen)) return;
+      if (this._session.isStale(gen) || this.state.mode === "latin") return;
       const fallback = previewFromBuffer(this.state.composition) || input;
       this.setState(withCandidates(this.state, fallback ? [fallback] : []));
     }
   }
 
   async queryNextWords(word) {
+    if (this.state.mode === "latin") {
+      this.setState(withCandidates(this.state, []));
+      return;
+    }
     const gen = this._session.next();
     if (!word || !this.provider.getNextWords) {
       this.setState(withCandidates(this.state, []));
@@ -194,11 +218,11 @@ export class ImeCore {
     }
     try {
       const list = await this.provider.getNextWords(word);
-      if (this._session.isStale(gen)) return;
+      if (this._session.isStale(gen) || this.state.mode === "latin") return;
       this.setState(withCandidates(this.state, list));
       this.emit("mgl-ime-candidates", { candidates: list, trigger: "commit" });
     } catch {
-      if (this._session.isStale(gen)) return;
+      if (this._session.isStale(gen) || this.state.mode === "latin") return;
       this.setState(withCandidates(this.state, []));
     }
   }
@@ -376,6 +400,9 @@ export class ImeCore {
     }
 
     if (latinMode && key && /^[\x20-\x7E]$/.test(key)) {
+      if (this.state.candidates.length) {
+        this.setState(clearCompositionFields(this.state));
+      }
       this.adapter.insertText(key);
       return true;
     }
