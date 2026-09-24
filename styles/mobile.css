@@ -1,0 +1,15 @@
+/* Mobile keyboard host tweaks */
+
+body.mgl-ime-mobile-open {
+  padding-bottom: 280px;
+}
+
+/* Candidate popup sits above the keyboard */
+mgl-candidates[variant="bar"] {
+  z-index: 10001;
+  pointer-events: auto;
+}
+
+mgl-keyboard {
+  z-index: 10000;
+}

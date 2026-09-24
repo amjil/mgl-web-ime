@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="mn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>mgl-web-ime — Editor / JS API</title>
+    <link rel="stylesheet" href="../styles/ime.css" />
+    <style>
+      body {
+        margin: 0;
+        font-family: Georgia, serif;
+        background: #f0ebe3;
+        padding: 24px;
+      }
+      h1 { font-size: 1.4rem; margin: 0 0 8px; }
+      p { opacity: 0.7; margin-top: 0; }
+      textarea {
+        width: min(480px, 100%);
+        height: 160px;
+        font-family: var(--mgl-ime-font);
+        font-size: 20px;
+        writing-mode: vertical-lr;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid #bdb6a8;
+      }
+      pre {
+        background: #1e1e22;
+        color: #d8d8d0;
+        padding: 12px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        max-width: 480px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>JS API · textarea</h1>
+    <p>Wire up with <code>new MglIME({ target, profile })</code>.</p>
+    <textarea id="ta" spellcheck="false"></textarea>
+    <pre id="log"></pre>
+
+    <script type="module">
+      import { MglIME } from "../src/index.js";
+
+      const log = document.getElementById("log");
+      const ime = new MglIME({
+        target: "#ta",
+        profile: "desktop",
+        keyboard: "system",
+        baseUrl: "http://dev1:3003",
+      });
+
+      ime.on("mgl-ime-commit", (d) => {
+        log.textContent = `commit: ${JSON.stringify(d)}\n` + log.textContent;
+      });
+      ime.on("mgl-ime-candidates", (d) => {
+        log.textContent =
+          `candidates(${d.trigger}): ${d.candidates?.slice(0, 5).join(" · ")}\n` +
+          log.textContent;
+      });
+
+      document.getElementById("ta").focus();
+    </script>
+  </body>
+</html>

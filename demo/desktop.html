@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="mn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>mgl-web-ime — Desktop Demo</title>
+    <link rel="stylesheet" href="../styles/ime.css" />
+    <link rel="stylesheet" href="../styles/desktop.css" />
+    <style>
+      body {
+        margin: 0;
+        font-family: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+        background:
+          radial-gradient(ellipse at 20% 0%, #e8f0e4 0%, transparent 50%),
+          radial-gradient(ellipse at 100% 40%, #e4ebe8 0%, transparent 45%),
+          #f3efe6;
+        color: #1a1a1a;
+        min-height: 100vh;
+      }
+      header {
+        padding: 28px 32px 8px;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1.6rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      header p {
+        margin: 8px 0 0;
+        opacity: 0.7;
+        max-width: 42em;
+        line-height: 1.45;
+      }
+      main {
+        padding: 16px 32px 48px;
+        display: flex;
+        gap: 28px;
+        align-items: flex-start;
+        flex-wrap: nowrap;
+      }
+      .editor-col {
+        flex: 0 0 auto;
+        width: 200px;
+      }
+      .editor-col .mgl-editor {
+        width: 100%;
+        height: 320px;
+        min-height: 0;
+        box-sizing: border-box;
+        overflow: auto;
+      }
+      .hint {
+        flex: 0 0 22em;
+        font-size: 0.9rem;
+        opacity: 0.65;
+        line-height: 1.5;
+        max-width: 22em;
+      }
+      .hint code {
+        font-family: ui-monospace, monospace;
+        font-size: 0.85em;
+        background: rgba(0, 0, 0, 0.06);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      .status {
+        margin-top: 12px;
+        font-size: 0.85rem;
+        opacity: 0.8;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      @media (max-width: 640px) {
+        main {
+          flex-wrap: wrap;
+        }
+        .hint {
+          flex-basis: auto;
+        }
+      }
+      #toolbar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>mgl-web-ime · Desktop</h1>
+      <p>
+        Physical keyboard Latin transliteration → Mongolian preview and
+        candidates. Backend defaults to
+        <code>http://dev1:3003</code> (m-i-c/backend).
+      </p>
+    </header>
+    <main>
+      <div class="editor-col">
+        <div id="toolbar">
+          <mgl-ime-toggle id="toggle"></mgl-ime-toggle>
+        </div>
+        <div
+          id="editor"
+          class="mgl-editor"
+          contenteditable="true"
+          spellcheck="false"
+        ></div>
+        <div class="status" id="status">ready</div>
+      </div>
+      <div class="hint">
+        <p><strong>Shortcuts</strong></p>
+        <p><code>a–z</code> type · <code>Space</code> commit · <code>1–5</code> pick</p>
+        <p><code>=</code> / <code>-</code> page · <code>Esc</code> cancel</p>
+        <p><code>Shift</code> tap for Latin · <code>Ctrl+Space</code> toggle IME</p>
+        <p><code>Shift+-</code> suffix candidates</p>
+        <p>😊 toolbar button opens the desktop emoji picker</p>
+      </div>
+    </main>
+
+    <mgl-ime
+      id="ime"
+      target="#editor"
+      profile="desktop"
+      keyboard="system"
+      base-url="http://dev1:3003"
+    ></mgl-ime>
+
+    <script type="module">
+      import "../src/index.js";
+
+      const toggle = document.getElementById("toggle");
+      const status = document.getElementById("status");
+      const imeEl = document.getElementById("ime");
+
+      const sync = () => {
+        const ime = imeEl.ime;
+        if (!ime) return;
+        const s = ime.getState();
+        toggle.sync({ enabled: s.enabled, mode: s.mode, showEmojiButton: true });
+        status.textContent = `mode=${s.mode} buffer=${s.composition || "∅"} cands=${s.candidates.length}`;
+      };
+
+      const waitReady = () =>
+        new Promise((resolve) => {
+          if (imeEl.ime) return resolve(imeEl.ime);
+          imeEl.addEventListener("mgl-ime-ready", () => resolve(imeEl.ime), {
+            once: true,
+          });
+          // attribute boot is sync after define; poll briefly
+          requestAnimationFrame(() => resolve(imeEl.ime));
+        });
+
+      const ime = await waitReady();
+      ime?.on("state", sync);
+      sync();
+
+      toggle.addEventListener("mgl-toggle", (e) => {
+        if (!ime) return;
+        if (e.detail.action === "enable") {
+          ime.getState().enabled ? ime.disable() : ime.enable();
+        }
+        if (e.detail.action === "mode") {
+          const m = ime.getState().mode === "mongol" ? "latin" : "mongol";
+          ime.setMode(m);
+        }
+        if (e.detail.action === "emoji") {
+          ime.toggleEmojiPicker(toggle);
+        }
+        sync();
+      });
+
+      document.getElementById("editor").focus();
+    </script>
+  </body>
+</html>

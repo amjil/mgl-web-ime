@@ -1,0 +1,41 @@
+{
+  "name": "mgl-web-ime",
+  "version": "0.1.0",
+  "description": "Mongolian Web Input Method — independent library & Web Components",
+  "type": "module",
+  "main": "./dist/mgl-web-ime.js",
+  "module": "./dist/mgl-web-ime.js",
+  "exports": {
+    ".": "./dist/mgl-web-ime.js",
+    "./style.css": "./dist/mgl-web-ime.css",
+    "./mgl-web-ime.css": "./dist/mgl-web-ime.css",
+    "./styles/*": "./styles/*"
+  },
+  "files": [
+    "dist",
+    "src",
+    "styles",
+    "fonts"
+  ],
+  "scripts": {
+    "build": "node scripts/build.js",
+    "prepublishOnly": "npm run build",
+    "demo": "npx --yes serve . -p 5173",
+    "test": "node --test test/**/*.test.js"
+  },
+  "keywords": [
+    "mongolian",
+    "ime",
+    "input-method",
+    "web-components",
+    "pwa"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amjil/mgl-web-ime.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.9"
+  }
+}
