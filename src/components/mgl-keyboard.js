@@ -7,6 +7,7 @@ import { VirtualKeyboard } from "../keyboard/keyboard.js";
 import {
   resolvePopupKeys,
   popupIndexFromDx,
+  popupIndexFromClientX,
 } from "../keyboard/popup-candidates.js";
 import { EMOJI_CATEGORIES } from "../keyboard/emoji.js";
 
@@ -44,9 +45,12 @@ function buildTemplate() {
       padding-bottom: env(safe-area-inset-bottom, 0);
       user-select: none;
       -webkit-user-select: none;
-      touch-action: manipulation;
+      -webkit-touch-callout: none;
+      /* none: sliding after long-press must not be taken as a page scroll */
+      touch-action: none;
     }
     :host([visible]) { display: block; }
+    :host([popup-open]) { z-index: 10020; }
     .wrap {
       background: var(--bg);
       border-top: 1px solid var(--border);
@@ -77,6 +81,7 @@ function buildTemplate() {
       padding: 0 2px;
       position: relative;
       box-sizing: border-box;
+      touch-action: none;
     }
     button.key.action {
       background: var(--key-action);
@@ -150,6 +155,7 @@ function buildTemplate() {
       height: 36px;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
+      touch-action: pan-x;
       scrollbar-width: none;
     }
     .emoji-cats::-webkit-scrollbar { display: none; }
@@ -234,7 +240,16 @@ export class MglKeyboard extends Base {
     /** @type {(() => ({text:string,start:number}|null))|null} */
     this.getEditingContext = null;
     this._press = null;
+    this._pressBound = false;
     this._needsRender = false;
+    this._boundMove = (e) => this._onPointerMove(e);
+    this._boundUp = (e) => this._onPointerUp(e);
+    this._boundCancel = (e) => this._onPointerCancel(e);
+    this._boundTouchMove = (e) => {
+      if (!this._press) return;
+      if (e.cancelable) e.preventDefault();
+    };
+    this._onContextMenu = (e) => e.preventDefault();
     this._vk = new VirtualKeyboard({
       onEvent: (ev) => {
         this.dispatchEvent(
@@ -290,10 +305,12 @@ export class MglKeyboard extends Base {
   }
 
   connectedCallback() {
+    this.addEventListener("contextmenu", this._onContextMenu);
     this.render();
   }
 
   disconnectedCallback() {
+    this.removeEventListener("contextmenu", this._onContextMenu);
     this._cancelPress();
   }
 
@@ -331,6 +348,16 @@ export class MglKeyboard extends Base {
     this._popup.removeAttribute("open");
     this._popup.innerHTML = "";
     this._popup.setAttribute("aria-hidden", "true");
+    this.removeAttribute("popup-open");
+  }
+
+  /** Visible mobile candidate bar, if any. */
+  _candidateBarRect() {
+    const el = document.querySelector("mgl-candidates[visible]");
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    if (!r.height || r.bottom <= 0) return null;
+    return r;
   }
 
   /**
@@ -350,20 +377,28 @@ export class MglKeyboard extends Base {
     });
 
     const rect = btn.getBoundingClientRect();
+    this.setAttribute("popup-open", "");
     this._popup.setAttribute("open", "");
     this._popup.setAttribute("aria-hidden", "false");
 
     // Measure after open
     const pRect = this._popup.getBoundingClientRect();
     const vw = window.innerWidth;
-    let left = rect.left;
-    if (rect.left + rect.width / 2 > vw / 2) {
-      left = rect.right - pRect.width;
-    }
+    const rightAligned = rect.left + rect.width / 2 > vw / 2;
+    let left = rightAligned ? rect.right - pRect.width : rect.left;
     left = Math.max(8, Math.min(left, vw - pRect.width - 8));
-    const top = Math.max(8, rect.top - pRect.height - 10);
+
+    // Sit just above the key, but never under the candidate bar — lift above it.
+    let top = rect.top - pRect.height - 10;
+    const cand = this._candidateBarRect();
+    if (cand && top + pRect.height > cand.top - 8) {
+      top = cand.top - pRect.height - 8;
+    }
+    top = Math.max(8, top);
+
     this._popup.style.left = `${left}px`;
     this._popup.style.top = `${top}px`;
+    if (this._press) this._press.rightAligned = rightAligned;
   }
 
   /** @param {number} selected */
@@ -373,9 +408,28 @@ export class MglKeyboard extends Base {
     });
   }
 
+  _bindPressListeners() {
+    if (this._pressBound) return;
+    this._pressBound = true;
+    document.addEventListener("pointermove", this._boundMove, { passive: false });
+    document.addEventListener("pointerup", this._boundUp);
+    document.addEventListener("pointercancel", this._boundCancel);
+    document.addEventListener("touchmove", this._boundTouchMove, { passive: false });
+  }
+
+  _unbindPressListeners() {
+    if (!this._pressBound) return;
+    this._pressBound = false;
+    document.removeEventListener("pointermove", this._boundMove);
+    document.removeEventListener("pointerup", this._boundUp);
+    document.removeEventListener("pointercancel", this._boundCancel);
+    document.removeEventListener("touchmove", this._boundTouchMove);
+  }
+
   _cancelPress() {
     if (this._press?.timer) clearTimeout(this._press.timer);
     if (this._press?.btn) this._press.btn.classList.remove("pressed");
+    this._unbindPressListeners();
     this._press = null;
     this._hidePopup();
     this._flushRender();
@@ -389,10 +443,10 @@ export class MglKeyboard extends Base {
   _onPointerDown(e, key, btn) {
     if (e.button != null && e.button !== 0) return;
     e.preventDefault();
+    this._cancelPress();
     btn.setPointerCapture?.(e.pointerId);
     btn.classList.add("pressed");
 
-    this._cancelPress();
     this._press = {
       key,
       btn,
@@ -402,10 +456,12 @@ export class MglKeyboard extends Base {
       dx: 0,
       popup: false,
       selected: 0,
+      rightAligned: false,
       /** @type {import("../keyboard/popup-candidates.js").PopupKey[]} */
       popupKeys: [],
       timer: null,
     };
+    this._bindPressListeners();
 
     if (key.type === "action") {
       // Actions fire immediately (no long-press variants).
@@ -423,9 +479,20 @@ export class MglKeyboard extends Base {
       if (!popupKeys.length) return;
       this._press.popup = true;
       this._press.popupKeys = popupKeys;
-      this._press.selected = 0;
       this._showPopup(btn, popupKeys, !!key.mongol, 0);
+      this._press.selected = this._popupIndexFromPointer(this._press.startX);
+      this._updatePopupSelection(this._press.selected);
     }, LONG_PRESS_MS);
+  }
+
+  /** @param {number} clientX */
+  _popupIndexFromPointer(clientX) {
+    const p = this._press;
+    if (!p?.popupKeys?.length) return 0;
+    const rects = [...this._popup.children].map((el) => el.getBoundingClientRect());
+    if (rects.length) return popupIndexFromClientX(rects, clientX);
+    const anchor = p.rightAligned ? p.popupKeys.length - 1 : 0;
+    return popupIndexFromDx(clientX - p.startX, p.popupKeys.length, 36, anchor);
   }
 
   /**
@@ -433,9 +500,12 @@ export class MglKeyboard extends Base {
    */
   _onPointerMove(e) {
     const p = this._press;
-    if (!p || !p.popup) return;
+    if (!p) return;
+    if (p.pointerId != null && e.pointerId !== p.pointerId) return;
+    if (e.cancelable) e.preventDefault();
     p.dx = e.clientX - p.startX;
-    const idx = popupIndexFromDx(p.dx, p.popupKeys.length);
+    if (!p.popup) return;
+    const idx = this._popupIndexFromPointer(e.clientX);
     if (idx !== p.selected) {
       p.selected = idx;
       this._updatePopupSelection(idx);
@@ -448,6 +518,7 @@ export class MglKeyboard extends Base {
   _onPointerUp(e) {
     const p = this._press;
     if (!p) return;
+    if (p.pointerId != null && e.pointerId != null && e.pointerId !== p.pointerId) return;
     if (p.timer) clearTimeout(p.timer);
 
     if (p.popup && p.popupKeys.length) {
@@ -466,9 +537,23 @@ export class MglKeyboard extends Base {
     } catch {
       /* ignore */
     }
+    this._unbindPressListeners();
     this._press = null;
     this._hidePopup();
     this._flushRender();
+  }
+
+  /**
+   * Browser stole the gesture (scroll / system). Abort — do not insert.
+   * @param {PointerEvent} [e]
+   */
+  _onPointerCancel(e) {
+    const p = this._press;
+    if (!p) return;
+    if (e && p.pointerId != null && e.pointerId != null && e.pointerId !== p.pointerId) {
+      return;
+    }
+    this._cancelPress();
   }
 
   _renderEmojiPanel() {
@@ -610,9 +695,6 @@ export class MglKeyboard extends Base {
         }
 
         btn.addEventListener("pointerdown", (ev) => this._onPointerDown(ev, key, btn));
-        btn.addEventListener("pointermove", (ev) => this._onPointerMove(ev));
-        btn.addEventListener("pointerup", (ev) => this._onPointerUp(ev));
-        btn.addEventListener("pointercancel", () => this._cancelPress());
 
         rowEl.appendChild(btn);
       });

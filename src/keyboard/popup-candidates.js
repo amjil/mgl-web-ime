@@ -400,12 +400,37 @@ export function resolvePopupKeys(key, ctx, opts = {}) {
 
 /**
  * Index from horizontal drag distance (mirrors keyboard-overlay).
+ * When the popup is right-aligned, the last item sits under the finger, so
+ * `anchor` should be `count - 1` — sliding left then selects earlier items.
  * @param {number} dx
  * @param {number} count
  * @param {number} [itemWidth=36]
+ * @param {number} [anchor=0] — item index under the press start
  */
-export function popupIndexFromDx(dx, count, itemWidth = 36) {
+export function popupIndexFromDx(dx, count, itemWidth = 36, anchor = 0) {
   if (!count) return 0;
   const offset = Math.trunc(dx / itemWidth);
-  return Math.max(0, Math.min(count - 1, offset));
+  return Math.max(0, Math.min(count - 1, anchor + offset));
+}
+
+/**
+ * Pick the popup item that contains `clientX`, else the nearest by center.
+ * @param {{left:number,right:number}[]} rects
+ * @param {number} clientX
+ */
+export function popupIndexFromClientX(rects, clientX) {
+  if (!rects?.length) return 0;
+  let best = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    if (clientX >= r.left && clientX <= r.right) return i;
+    const cx = (r.left + r.right) / 2;
+    const dist = Math.abs(clientX - cx);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = i;
+    }
+  }
+  return best;
 }
