@@ -351,15 +351,6 @@ export class MglKeyboard extends Base {
     this.removeAttribute("popup-open");
   }
 
-  /** Visible mobile candidate bar, if any. */
-  _candidateBarRect() {
-    const el = document.querySelector("mgl-candidates[visible]");
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    if (!r.height || r.bottom <= 0) return null;
-    return r;
-  }
-
   /**
    * @param {HTMLElement} btn
    * @param {import("../keyboard/popup-candidates.js").PopupKey[]} keys
@@ -387,14 +378,8 @@ export class MglKeyboard extends Base {
     const rightAligned = rect.left + rect.width / 2 > vw / 2;
     let left = rightAligned ? rect.right - pRect.width : rect.left;
     left = Math.max(8, Math.min(left, vw - pRect.width - 8));
-
-    // Sit just above the key, but never under the candidate bar — lift above it.
-    let top = rect.top - pRect.height - 10;
-    const cand = this._candidateBarRect();
-    if (cand && top + pRect.height > cand.top - 8) {
-      top = cand.top - pRect.height - 8;
-    }
-    top = Math.max(8, top);
+    // Float just above the pressed key; stacking (popup-open) covers the candidate bar.
+    const top = Math.max(8, rect.top - pRect.height - 10);
 
     this._popup.style.left = `${left}px`;
     this._popup.style.top = `${top}px`;
