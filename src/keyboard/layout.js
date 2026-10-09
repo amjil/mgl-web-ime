@@ -114,3 +114,27 @@ export function resolveLayoutName({ base = "mongol", special = false, otherSpeci
   if (special) return "mongol-special";
   return base;
 }
+
+/**
+ * These marks are drawn on their side in the Mongol font. On the Mongol
+ * symbol keyboard the label is rotated so they stand with vertical script.
+ * The inserted character is unchanged.
+ */
+const SIDEWAYS_SYMBOLS = new Set([
+  "\uFF01", // ！
+  "\uFF1F", // ？
+  "\u2048", // ⁈
+  "\u2049", // ⁉
+]);
+
+/**
+ * @param {string} value
+ * @param {string} layoutName
+ */
+export function shouldRotateSymbolDisplay(value, layoutName) {
+  if (layoutName !== "mongol-special" && layoutName !== "mongol-other-special") {
+    return false;
+  }
+  const ch = typeof value === "string" ? Array.from(value)[0] : "";
+  return SIDEWAYS_SYMBOLS.has(ch);
+}

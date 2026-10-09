@@ -4,6 +4,7 @@
  */
 
 import { VirtualKeyboard } from "../keyboard/keyboard.js";
+import { resolveLayoutName, shouldRotateSymbolDisplay } from "../keyboard/layout.js";
 import {
   resolvePopupKeys,
   popupIndexFromDx,
@@ -97,6 +98,17 @@ function buildTemplate() {
       writing-mode: vertical-lr;
       text-orientation: mixed;
       font-size: 22px;
+    }
+    /* ！？⁉⁈ are sideways in the Mongol font; turn the label only. */
+    button.key.sideways {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    button.key.sideways > span {
+      display: block;
+      line-height: 1;
+      transform: rotate(90deg);
     }
     .hint {
       position: absolute;
@@ -635,6 +647,12 @@ export class MglKeyboard extends Base {
       return;
     }
     const rows = this._vk.getLayoutRows();
+    const layoutName = resolveLayoutName({
+      base: this._vk.baseLayout,
+      special: this._vk.special,
+      otherSpecial: this._vk.otherSpecial,
+      latin: this._vk.latin,
+    });
     const isMongolLayout = !this._vk.latin && !this._vk.special && !this._vk.otherSpecial;
     rows.forEach((row) => {
       const rowEl = document.createElement("div");
@@ -668,6 +686,9 @@ export class MglKeyboard extends Base {
           btn.appendChild(label);
         } else {
           if (key.mongol) btn.classList.add("mongol");
+          if (shouldRotateSymbolDisplay(key.value, layoutName)) {
+            btn.classList.add("sideways");
+          }
           if (isMongolLayout && key.id && !["ng", "-", "_"].includes(key.id)) {
             const hint = document.createElement("span");
             hint.className = "hint";
