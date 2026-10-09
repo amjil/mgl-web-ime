@@ -100,6 +100,96 @@ describe("Shift / setMode latin dismisses candidates", () => {
   });
 });
 
+describe("mobile symbol insert dismisses candidates", () => {
+  it("clears the list as soon as a symbol is inserted and does not look the word up again", async () => {
+    const adapter = memoryAdapter();
+    let queries = 0;
+    const core = new ImeCore({
+      adapter,
+      provider: {
+        getCandidates: async () => {
+          queries += 1;
+          return ["FIRST", "SECOND"];
+        },
+        getNextWords: async () => ["NEXT"],
+      },
+    });
+
+    await core.handleEvent({ type: "command", command: "insert", key: "\u1820" });
+    assert.deepEqual(core.state.candidates, ["FIRST", "SECOND"]);
+    const queriesAfterLetter = queries;
+
+    await core.handleEvent({ type: "command", command: "insert", key: "\uff01" });
+
+    assert.equal(adapter.getText(), "\u1820\uff01");
+    assert.deepEqual(core.state.candidates, []);
+    assert.equal(core.state.candidateVisible, false);
+    assert.equal(queries, queriesAfterLetter);
+  });
+
+  it("clears a next-word list when Mongolian punctuation is inserted", async () => {
+    const adapter = memoryAdapter();
+    const core = new ImeCore({
+      adapter,
+      provider: {
+        getCandidates: async () => ["\u1820"],
+        getNextWords: async () => ["NEXT", "ALSO"],
+      },
+    });
+
+    await core.pickCandidateMobile("\u1820");
+    assert.deepEqual(core.state.candidates, ["NEXT", "ALSO"]);
+
+    await core.handleEvent({ type: "command", command: "insert", key: "\u1802" });
+
+    assert.equal(adapter.getText(), "\u1820 \u1802");
+    assert.deepEqual(core.state.candidates, []);
+    assert.equal(core.state.candidateVisible, false);
+  });
+
+  it("ignores a late candidate response after a symbol clears the list", async () => {
+    const adapter = memoryAdapter();
+    let resolveRemote;
+    const core = new ImeCore({
+      adapter,
+      provider: {
+        getCandidates: () =>
+          new Promise((resolve) => {
+            resolveRemote = resolve;
+          }),
+        getNextWords: async () => ["NEXT"],
+      },
+    });
+
+    const pending = core.handleEvent({ type: "command", command: "insert", key: "\u1820" });
+    await core.handleEvent({ type: "command", command: "insert", key: "\uff1f" });
+    resolveRemote(["LATE"]);
+    await pending;
+    await Promise.resolve();
+
+    assert.equal(adapter.getText(), "\u1820\uff1f");
+    assert.deepEqual(core.state.candidates, []);
+    assert.equal(core.state.candidateVisible, false);
+  });
+
+  it("still loads candidates when a Mongolian letter is inserted", async () => {
+    const adapter = memoryAdapter();
+    const core = new ImeCore({
+      adapter,
+      provider: {
+        getCandidates: async (input) => [input],
+        getNextWords: async () => [],
+      },
+    });
+
+    await core.handleEvent({ type: "command", command: "insert", key: "\u1820" });
+
+    assert.equal(adapter.getText(), "\u1820");
+    assert.deepEqual(core.state.candidates, ["\u1820"]);
+    assert.equal(core.state.candidateVisible, true);
+  });
+});
+
 describe("direct symbols dismiss candidates", () => {
   it("inserts punctuation immediately and clears the list without committing the first candidate", async () => {
     const adapter = memoryAdapter();

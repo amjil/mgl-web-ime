@@ -61,6 +61,20 @@ export function isMongolianLetter(code) {
   return code >= 0x1820 && code <= 0x1842;
 }
 
+/**
+ * Virtual-keyboard symbol (punctuation, digits, marks).
+ * Mongolian letters, FVS, and MVS keep word lookup.
+ * @param {string} ch
+ */
+export function isMobileSymbol(ch) {
+  const cp = typeof ch === "string" ? ch.codePointAt(0) : undefined;
+  if (cp == null) return false;
+  if (cp >= 0x1820 && cp <= 0x18aa) return false;
+  if (cp >= 0x180b && cp <= 0x180e) return false;
+  if (cp === 0x200c || cp === 0x200d || cp === 0x202f) return false;
+  return true;
+}
+
 /** @param {string} ch */
 export function isMongolianChar(ch) {
   if (!ch) return false;
