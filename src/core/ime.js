@@ -411,7 +411,7 @@ export class ImeCore {
       return this._handleCommand("escape");
     }
 
-    // Direct punctuation / FVS / NNBSP
+    // Punctuation / FVS / NNBSP: insert the symbol now and close candidates.
     const direct = directCharFromKey({ key, code, shiftKey, latinMode });
     if (direct != null) {
       await this._injectDirect(direct);
@@ -523,12 +523,21 @@ export class ImeCore {
     return true;
   }
 
+  /**
+   * Insert punctuation / FVS / NNBSP at the caret and close the candidate list.
+   * Does not commit a candidate or request next-word suggestions. An in-progress
+   * phonetic preview stays in the editor; only the list and composition state go.
+   * @param {string} ch
+   */
   async _injectDirect(ch) {
-    if (this.state.composition || this.state.candidates.length) {
-      await this.commitCurrent({ addSpaceAfter: false });
-    }
-    this.adapter.replaceBeforeCaret?.(this.state.previewLen, ch);
+    const hadComp = this.state.composing || this.state.previewLen > 0;
+    const preview = this.state.preview;
+    this._session.next();
+    this.adapter.replaceBeforeCaret?.(0, ch);
     this.setState(clearCompositionFields(this.state));
+    if (hadComp) {
+      this.emit("mgl-ime-composition-end", { text: preview, cancelled: false });
+    }
   }
 
   /**
