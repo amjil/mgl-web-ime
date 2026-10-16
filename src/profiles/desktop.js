@@ -36,12 +36,17 @@ export function attachDesktopController(core, options = {}) {
     if (!core.state.enabled) return;
     if (e.isComposing || e.key === "Process") return;
 
+    // Never steal browser edit shortcuts (Ctrl/Cmd+C/V/X/A/Z/…).
+    // Only Ctrl/Cmd+Space is an IME chord; everything else must reach the page.
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key !== " " && e.code !== "Space") return;
+
     const ev = {
       type: "key",
       key: e.key,
       code: e.code,
       shiftKey: e.shiftKey,
-      ctrlKey: e.ctrlKey || e.metaKey,
+      ctrlKey: mod,
       altKey: e.altKey,
     };
 
