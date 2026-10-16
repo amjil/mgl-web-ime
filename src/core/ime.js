@@ -479,7 +479,27 @@ export class ImeCore {
       await this.updateComposition(nb);
       return true;
     }
-    // Delete trailing Mongol word when present (desktop behavior)
+
+    // Mobile virtual keyboard: delete one char and refresh candidates
+    // from the remaining last word (mirrors _insertDirectMobile).
+    if (this.state.profile === "mobile") {
+      this.adapter.deleteBackward();
+      this.setState({ pendingSuffixDelete: false });
+      if (this.state.mode === "latin") {
+        if (this.state.candidates.length) {
+          this.setState(clearCompositionFields(this.state));
+        }
+        return true;
+      }
+      const ctx =
+        this.adapter.getTextBeforeCaret?.() ?? this.adapter.getText();
+      const last = getLastWord(ctx);
+      if (last) await this.queryCandidates(last, "typing");
+      else this.setState(withCandidates(this.state, []));
+      return true;
+    }
+
+    // Desktop: delete trailing Mongol word when present
     const ctx = this.adapter.getTextBeforeCaret?.() ?? "";
     const word = trailingMongolWord(ctx);
     if (word) {
