@@ -23,7 +23,11 @@ import {
 } from "./candidate.js";
 import { translate, directCharFromKey } from "./mapping.js";
 import { getSuffixCandidates, isKnownSuffix } from "./suffix.js";
-import { getLastWord, trailingMongolWord } from "../utils/unicode.js";
+import {
+  getLastWord,
+  isMobileSymbol,
+  trailingMongolWord,
+} from "../utils/unicode.js";
 import { Mongol } from "../utils/mongol.js";
 import { LocalCandidateProvider } from "../api/candidate-provider.js";
 
@@ -580,12 +584,15 @@ export class ImeCore {
   /** Mobile: insert Mongol char and refresh candidates from last word. */
   async _insertDirectMobile(ch) {
     this.adapter.insertText(ch);
-    // Typing clears suffix-attach mode (m-v-k on-key-press :string).
-    this.setState({ pendingSuffixDelete: false });
-    if (this.state.mode === "latin") {
-      if (this.state.candidates.length) this.setState(clearCompositionFields(this.state));
+    // Symbols close the list now. Do not look the word up again, and drop
+    // a candidate response that was already in flight.
+    if (this.state.mode === "latin" || isMobileSymbol(ch)) {
+      this._session.next();
+      this.setState(clearCompositionFields(this.state));
       return true;
     }
+    // Typing clears suffix-attach mode (m-v-k on-key-press :string).
+    this.setState({ pendingSuffixDelete: false });
     const ctx = this.adapter.getTextBeforeCaret?.() ?? this.adapter.getText();
     const last = getLastWord(ctx);
     if (last) await this.queryCandidates(last, "typing");

@@ -33,5 +33,6 @@ export function previewFromBuffer(buffer) {
  * @param {string} char
  */
 export function isCompositionChar(char) {
-  return typeof char === "string" && /^[a-zA-Z\-=+]$/.test(char);
+  // Include \ so MVS stays inside the phonetic buffer (word continuity).
+  return typeof char === "string" && /^[a-zA-Z\-=+\\]$/.test(char);
 }

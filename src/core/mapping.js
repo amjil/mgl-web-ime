@@ -84,9 +84,8 @@ export function directCharFromKey(ev) {
   if (shiftKey && (key === " " || code === "Space")) return "\u202f"; // NNBSP
   if (code === "BracketLeft" || key === "[") return "\u180b";
   if (code === "BracketRight" || key === "]") return "\u180c";
-  // | (Shift+\) → FVS3; \ → MVS
+  // | (Shift+\) → FVS3. Bare \ is MVS via phonetic composition (not direct).
   if (key === "|" || (code === "Backslash" && shiftKey)) return "\u180d";
-  if (code === "Backslash" || key === "\\") return "\u180e";
   if (key === "," || code === "Comma") return "\u1802";
   if (key === "." || code === "Period") return "\u1803";
   if (
