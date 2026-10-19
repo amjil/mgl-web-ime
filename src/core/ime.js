@@ -484,22 +484,11 @@ export class ImeCore {
       return true;
     }
 
-    // Mobile virtual keyboard: delete one char and refresh candidates
-    // from the remaining last word (mirrors _insertDirectMobile).
+    // Mobile virtual keyboard: delete one char and clear the candidate list.
     if (this.state.profile === "mobile") {
       this.adapter.deleteBackward();
-      this.setState({ pendingSuffixDelete: false });
-      if (this.state.mode === "latin") {
-        if (this.state.candidates.length) {
-          this.setState(clearCompositionFields(this.state));
-        }
-        return true;
-      }
-      const ctx =
-        this.adapter.getTextBeforeCaret?.() ?? this.adapter.getText();
-      const last = getLastWord(ctx);
-      if (last) await this.queryCandidates(last, "typing");
-      else this.setState(withCandidates(this.state, []));
+      this._session.next();
+      this.setState(clearCompositionFields(this.state));
       return true;
     }
 

@@ -28,7 +28,7 @@ function memoryAdapter(initial = "") {
 }
 
 describe("mobile backspace", () => {
-  it("deletes one character and refreshes candidates from the remaining word", async () => {
+  it("deletes one character and clears the candidate list", async () => {
     const adapter = memoryAdapter();
     const queries = [];
     const core = new ImeCore({
@@ -51,9 +51,9 @@ describe("mobile backspace", () => {
     await core.handleEvent({ type: "command", command: "backspace" });
 
     assert.equal(adapter.getText(), "ᠠ");
-    assert.deepEqual(core.state.candidates, ["cand:ᠠ"]);
-    assert.equal(core.state.candidateVisible, true);
-    assert.deepEqual(queries, ["ᠠ", "ᠠᠨ", "ᠠ"]);
+    assert.deepEqual(core.state.candidates, []);
+    assert.equal(core.state.candidateVisible, false);
+    assert.deepEqual(queries, ["ᠠ", "ᠠᠨ"]);
   });
 
   it("clears candidates when the last character of a word is deleted", async () => {
@@ -94,6 +94,36 @@ describe("mobile backspace", () => {
     await core.handleEvent({ type: "command", command: "backspace" });
 
     assert.equal(adapter.getText(), "ᠠᠪ");
-    assert.deepEqual(core.state.candidates, ["ᠠᠪ"]);
+    assert.deepEqual(core.state.candidates, []);
+  });
+
+  it("ignores a late candidate response after backspace clears the list", async () => {
+    const adapter = memoryAdapter();
+    let release;
+    const gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    const core = new ImeCore({
+      adapter,
+      profile: "mobile",
+      provider: {
+        getCandidates: () =>
+          gate.then(() => ["LATE"]),
+        getNextWords: async () => [],
+      },
+    });
+
+    const typing = core.handleEvent({
+      type: "command",
+      command: "insert",
+      key: "ᠠ",
+    });
+    await core.handleEvent({ type: "command", command: "backspace" });
+    release();
+    await typing;
+
+    assert.equal(adapter.getText(), "");
+    assert.deepEqual(core.state.candidates, []);
+    assert.equal(core.state.candidateVisible, false);
   });
 });
