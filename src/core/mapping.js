@@ -45,11 +45,12 @@ export const LATIN_TO_MONGOL = {
   // MVS
   "-": "\u180e",
   "=": "\u180e",
+  "\\": "\u180e",
 
   // FVS
   "[": "\u180b",
   "]": "\u180c",
-  "\\": "\u180d",
+  "|": "\u180d",
 
   // Punctuation
   ",": "\u1802",
@@ -83,7 +84,9 @@ export function directCharFromKey(ev) {
   if (shiftKey && (key === " " || code === "Space")) return "\u202f"; // NNBSP
   if (code === "BracketLeft" || key === "[") return "\u180b";
   if (code === "BracketRight" || key === "]") return "\u180c";
-  if (code === "Backslash" || key === "\\") return "\u180d";
+  // | (Shift+\) → FVS3; \ → MVS
+  if (key === "|" || (code === "Backslash" && shiftKey)) return "\u180d";
+  if (code === "Backslash" || key === "\\") return "\u180e";
   if (key === "," || code === "Comma") return "\u1802";
   if (key === "." || code === "Period") return "\u1803";
   if (

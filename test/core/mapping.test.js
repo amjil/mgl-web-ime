@@ -1,6 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { translate, LATIN_TO_MONGOL } from "../../src/core/mapping.js";
+import {
+  translate,
+  LATIN_TO_MONGOL,
+  directCharFromKey,
+} from "../../src/core/mapping.js";
 import {
   createInitialState,
   totalPages,
@@ -21,7 +25,17 @@ describe("mapping", () => {
 
   it("maps MVS and punctuation", () => {
     assert.equal(translate("-"), "\u180e");
+    assert.equal(translate("\\"), "\u180e");
+    assert.equal(translate("|"), "\u180d");
     assert.equal(translate(","), "\u1802");
+  });
+
+  it("directCharFromKey maps \\ to MVS and | to FVS3", () => {
+    assert.equal(directCharFromKey({ key: "\\", code: "Backslash" }), "\u180e");
+    assert.equal(
+      directCharFromKey({ key: "|", code: "Backslash", shiftKey: true }),
+      "\u180d"
+    );
   });
 });
 
