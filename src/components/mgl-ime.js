@@ -139,6 +139,12 @@ export class MglIME {
     if (this.keyboardMode === "virtual") {
       this.showKeyboard();
     }
+
+    this._boundKbLayout = () => {
+      if (this.profile === "mobile") this._positionMobileCandidates();
+    };
+    this.keyboardEl?.addEventListener("mgl-ime-keyboard-show", this._boundKbLayout);
+    this.keyboardEl?.addEventListener("mgl-ime-keyboard-hide", this._boundKbLayout);
   }
 
   _attachProfile() {
@@ -162,6 +168,8 @@ export class MglIME {
         },
       });
       this.candidatesEl.setAttribute("variant", "popup");
+      this._mobileKbObserver?.disconnect();
+      this._mobileKbObserver = null;
       this._clearMobileCandidatePosition();
       if (this.keyboardMode !== "virtual") this.hideKeyboard();
     } else {
@@ -170,15 +178,29 @@ export class MglIME {
       });
       // Same vertical Mongolian popup look as desktop; fixed above keyboard center
       this.candidatesEl.setAttribute("variant", "bar");
+      this._observeMobileKeyboard();
       this._positionMobileCandidates();
       if (this.keyboardMode === "virtual") this.showKeyboard();
     }
   }
 
+  _observeMobileKeyboard() {
+    this._mobileKbObserver?.disconnect();
+    this._mobileKbObserver = null;
+    if (this.profile !== "mobile" || !this.keyboardEl) return;
+    this._mobileKbObserver = new ResizeObserver(() => {
+      if (this.profile === "mobile") this._positionMobileCandidates();
+    });
+    this._mobileKbObserver.observe(this.keyboardEl);
+  }
+
   /** Fixed, horizontally centered, just above the virtual keyboard. */
   _positionMobileCandidates() {
-    if (!this.candidatesEl) return;
-    const kbH = this.keyboardEl?.offsetHeight || 240;
+    if (!this.candidatesEl || this.profile !== "mobile") return;
+    const kb = this.keyboardEl;
+    let kbH = 0;
+    if (kb?.visible) kbH = kb.offsetHeight;
+    if (!kbH) kbH = 280;
     const gap = 8;
     const el = this.candidatesEl;
     el.style.position = "fixed";
@@ -187,8 +209,14 @@ export class MglIME {
     el.style.transform = "translateX(-50%)";
     el.style.bottom = `${kbH + gap}px`;
     el.style.top = "auto";
+    el.style.zIndex = "10015";
     // Leave width to CSS (min(92vw, 520px)) so the strip can scroll horizontally.
     el.style.width = "";
+  }
+
+  /** Reposition the mobile candidate bar (e.g. after shell --app-ime-kb updates). */
+  syncMobileChrome() {
+    if (this.profile === "mobile") this._positionMobileCandidates();
   }
 
   /** Clear mobile positioning when switching to desktop. */
@@ -274,6 +302,9 @@ export class MglIME {
     if (this.profile === "mobile") {
       // Keyboard height may change after becoming visible — remeasure next frame.
       requestAnimationFrame(() => this._positionMobileCandidates());
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => this._positionMobileCandidates());
+      });
     }
   }
 
@@ -366,6 +397,10 @@ export class MglIME {
   destroy() {
     if (this._destroyed) return;
     this._destroyed = true;
+    this._mobileKbObserver?.disconnect();
+    this._mobileKbObserver = null;
+    this.keyboardEl?.removeEventListener("mgl-ime-keyboard-show", this._boundKbLayout);
+    this.keyboardEl?.removeEventListener("mgl-ime-keyboard-hide", this._boundKbLayout);
     this._desktop?.detach?.();
     this._mobile?.detach?.();
     this.core.destroy();
