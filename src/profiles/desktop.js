@@ -79,7 +79,13 @@ export function attachDesktopController(core, options = {}) {
     if (core.state.mode === "latin") return;
     if (e.isComposing) return;
     const type = e.inputType || "";
-    if (type.startsWith("insert")) {
+    // Paste / drop must reach the field; only block typed composition inserts.
+    if (
+      type.startsWith("insert") &&
+      type !== "insertFromPaste" &&
+      type !== "insertFromDrop" &&
+      type !== "insertFromYank"
+    ) {
       e.preventDefault();
     }
   };

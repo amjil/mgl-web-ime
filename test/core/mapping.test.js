@@ -67,6 +67,17 @@ describe("mapping", () => {
       "\u180d"
     );
   });
+
+  it("directCharFromKey maps ] to FVS2 and Shift+] to nirugu", () => {
+    assert.equal(
+      directCharFromKey({ key: "]", code: "BracketRight" }),
+      "\u180c"
+    );
+    assert.equal(
+      directCharFromKey({ key: "}", code: "BracketRight", shiftKey: true }),
+      "\u180a"
+    );
+  });
 });
 
 describe("MVS composition continuity", () => {
