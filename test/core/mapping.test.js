@@ -82,11 +82,11 @@ describe("mapping", () => {
   it("directCharFromKey maps Shift+, / Shift+. to Mongolian double quotes", () => {
     assert.equal(
       directCharFromKey({ key: "<", code: "Comma", shiftKey: true }),
-      "\u3008"
+      "\u300a"
     );
     assert.equal(
       directCharFromKey({ key: ">", code: "Period", shiftKey: true }),
-      "\u3009"
+      "\u300b"
     );
     assert.equal(directCharFromKey({ key: ",", code: "Comma" }), "\u1802");
     assert.equal(directCharFromKey({ key: ".", code: "Period" }), "\u1803");

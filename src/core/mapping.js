@@ -89,18 +89,18 @@ export function directCharFromKey(ev) {
   }
   // | (Shift+\) → FVS3. Bare \ is MVS via phonetic composition (not direct).
   if (key === "|" || (code === "Backslash" && shiftKey)) return "\u180d";
-  // Shift+, / Shift+. (< / > on US QWERTY) → Mongolian double angle quotes (KBDMONMO / m-h-k).
+  // Shift+, / Shift+. (< / > on US QWERTY) → Mongolian double quotes 《 》 (KBDMONMO / m-h-k).
   if (
     shiftKey &&
-    (key === "<" || key === "\u3008" || code === "Comma")
+    (key === "<" || key === "\u300a" || key === "\u3008" || code === "Comma")
   ) {
-    return "\u3008";
+    return "\u300a";
   }
   if (
     shiftKey &&
-    (key === ">" || key === "\u3009" || code === "Period")
+    (key === ">" || key === "\u300b" || key === "\u3009" || code === "Period")
   ) {
-    return "\u3009";
+    return "\u300b";
   }
   if (key === "," || code === "Comma") return "\u1802";
   if (key === "." || code === "Period") return "\u1803";
