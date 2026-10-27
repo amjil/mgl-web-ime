@@ -55,6 +55,8 @@ export const LATIN_TO_MONGOL = {
   // Punctuation
   ",": "\u1802",
   ".": "\u1803",
+  ";": "\u1801",
+  ":": "\u1804",
   "?": "\uff1f",
   "!": "\uff01",
 };
@@ -104,6 +106,14 @@ export function directCharFromKey(ev) {
   }
   if (key === "," || code === "Comma") return "\u1802";
   if (key === "." || code === "Period") return "\u1803";
+  // Shift+; / ： → Mongolian colon ᠄ (before bare ; so Shift+; is not ellipsis).
+  if (
+    shiftKey &&
+    (key === ":" || key === "\uff1a" || code === "Semicolon")
+  ) {
+    return "\u1804";
+  }
+  if (key === ";" || key === "\uff1b" || code === "Semicolon") return "\u1801";
   if (
     key === "?" ||
     key === "\uff1f" ||

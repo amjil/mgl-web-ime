@@ -58,6 +58,8 @@ describe("mapping", () => {
     assert.equal(translate("\\"), "\u180e");
     assert.equal(translate("|"), "\u180d");
     assert.equal(translate(","), "\u1802");
+    assert.equal(translate(";"), "\u1801");
+    assert.equal(translate(":"), "\u1804");
   });
 
   it("directCharFromKey maps | to FVS3; bare \\ stays phonetic", () => {
@@ -90,6 +92,14 @@ describe("mapping", () => {
     );
     assert.equal(directCharFromKey({ key: ",", code: "Comma" }), "\u1802");
     assert.equal(directCharFromKey({ key: ".", code: "Period" }), "\u1803");
+  });
+
+  it("directCharFromKey maps ; to ellipsis and Shift+; to Mongolian colon", () => {
+    assert.equal(directCharFromKey({ key: ";", code: "Semicolon" }), "\u1801");
+    assert.equal(
+      directCharFromKey({ key: ":", code: "Semicolon", shiftKey: true }),
+      "\u1804"
+    );
   });
 });
 
