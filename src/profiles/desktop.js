@@ -16,6 +16,8 @@
 export function attachDesktopController(core, options = {}) {
   const target = options.target ?? window;
   const editorEl = options.editorEl ?? null;
+  const textField =
+    editorEl instanceof HTMLInputElement || editorEl instanceof HTMLTextAreaElement;
   const shouldHandle = options.shouldHandle ?? (() => true);
 
   let shiftAlone = false;
@@ -75,6 +77,9 @@ export function attachDesktopController(core, options = {}) {
   // Host / system IMEs may send Mongolian data; Latin-only checks miss them.
   /** @param {InputEvent} e */
   const onBeforeInput = (e) => {
+    // Native <input>/<textarea>: keydown owns inserts; blocking beforeinput here
+    // can swallow keys willHandleKey skips (dead keys, some layouts).
+    if (textField) return;
     if (!shouldHandle() || !core.state.enabled) return;
     if (core.state.mode === "latin") return;
     if (e.isComposing) return;

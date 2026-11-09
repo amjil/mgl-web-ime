@@ -130,19 +130,33 @@ const ime = new MglIME({ adapter, profile: "auto" });
 
 ## Desktop shortcuts
 
+Mongolian mode (`MN`), IME on. See also `docs/使用帮助.md`.
+
 | Key | Action |
 |------|------|
-| `a–z` | Build Latin buffer and insert Mongolian preview |
+| `a–z` | Latin buffer → Mongolian preview + candidates |
 | `Space` | Commit current candidate (with trailing space) |
+| `Enter` | Commit current candidate (no trailing space) |
 | `1–5` | Select candidate on current page |
-| `=` / `+` | Next page |
-| `-` | Previous page |
+| `=` / `+` | Next candidate page (when candidates visible) |
+| `-` | Previous candidate page (when candidates visible) |
 | `Esc` | Cancel composition |
 | `Shift` tap | Toggle Mongolian / Latin |
 | `Ctrl+Space` | Toggle IME |
 | `Shift+-` | Suffix candidates |
-| `[` `]` `\` | FVS1/2/3 |
-| `Shift+Space` | NNBSP |
+| `Shift+Space` | NNBSP (narrow no-break space) |
+
+**Mongolian marks** (aligned with `m-h-k`):
+
+| Key | Inserts | Notes |
+|------|---------|--------|
+| `[` | FVS1 (U+180B) | Direct at caret |
+| `]` | FVS2 (U+180C) | Direct at caret |
+| `Shift+]` | nirugu ᠊ (U+180A) | Direct at caret |
+| `Shift+\` (`\|`) | FVS3 (U+180D) | Direct at caret |
+| `\` | MVS (U+180E) | Via phonetic buffer (same as `-` / `=` in a word); use Space/Enter to commit |
+| `-` / `=` | MVS (U+180E) | In buffer when typing; when candidates are open, `-` / `=` / `+` paginate instead |
+| `,` / `.` | Mongolian comma / period | Direct at caret |
 
 ## Architecture
 
