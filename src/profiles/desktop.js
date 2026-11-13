@@ -21,10 +21,43 @@ export function attachDesktopController(core, options = {}) {
   const shouldHandle = options.shouldHandle ?? (() => true);
 
   let shiftAlone = false;
+  let shiftDownTime = 0;
   /** Serialize overlapping async tails (network candidates, etc.). */
   let chain = Promise.resolve();
   /** Keys currently being handled (sync body + async tail). */
   let inFlight = 0;
+
+  /** Keep editor preview; clear unfinished composition / candidate UI. */
+  const dismissCompositionKeepPreview = () => {
+    if (!core.state.composing && !core.state.candidates.length) return;
+    core._session.next();
+    core.setState({
+      composing: false,
+      composition: "",
+      preview: "",
+      previewLen: 0,
+      candidates: [],
+      candidateVisible: false,
+      selectedCandidate: 0,
+      pageIndex: 0,
+    });
+  };
+
+  /** Mouse caret reposition inside the editor ends the current composition. */
+  const onEditorPointerDown = () => {
+    dismissCompositionKeepPreview();
+  };
+
+  /** Click outside editor + candidate panel closes the candidate UI. */
+  const onWindowPointerDown = (e) => {
+    if (
+      editorEl &&
+      !editorEl.contains(e.target) &&
+      !e.target.closest?.("mgl-candidates")
+    ) {
+      dismissCompositionKeepPreview();
+    }
+  };
 
   /** @param {object} ev */
   const handle = (ev) =>
@@ -96,21 +129,40 @@ export function attachDesktopController(core, options = {}) {
   };
 
   const onKeyDownShift = (e) => {
-    if (e.key === "Shift") shiftAlone = true;
-    else shiftAlone = false;
+    if (e.key === "Shift" && !e.repeat) {
+      shiftAlone = true;
+      shiftDownTime = performance.now();
+    } else if (e.key !== "Shift") {
+      shiftAlone = false;
+    }
   };
   const onKeyUp = (e) => {
     if (!shouldHandle() || !core.state.enabled) return;
-    if (e.key === "Shift" && shiftAlone) {
+    // Toggle mode only on a short tap (<300ms) with no other keys in between.
+    if (
+      e.key === "Shift" &&
+      shiftAlone &&
+      performance.now() - shiftDownTime < 300
+    ) {
       shiftAlone = false;
       core.setMode(core.state.mode === "mongol" ? "latin" : "mongol");
+    } else if (e.key === "Shift") {
+      shiftAlone = false;
     }
+  };
+
+  // Mouse activity while holding Shift should not count as a lone Shift tap.
+  const onPointerDownShiftGuard = () => {
+    shiftAlone = false;
   };
 
   target.addEventListener("keydown", onKeyDownShift, true);
   target.addEventListener("keydown", onKeyDown, true);
   target.addEventListener("keyup", onKeyUp, true);
   editorEl?.addEventListener("beforeinput", onBeforeInput, true);
+  editorEl?.addEventListener("pointerdown", onEditorPointerDown);
+  window.addEventListener("pointerdown", onWindowPointerDown);
+  window.addEventListener("pointerdown", onPointerDownShiftGuard, true);
 
   return {
     profile: "desktop",
@@ -121,6 +173,9 @@ export function attachDesktopController(core, options = {}) {
       target.removeEventListener("keydown", onKeyDown, true);
       target.removeEventListener("keyup", onKeyUp, true);
       editorEl?.removeEventListener("beforeinput", onBeforeInput, true);
+      editorEl?.removeEventListener("pointerdown", onEditorPointerDown);
+      window.removeEventListener("pointerdown", onWindowPointerDown);
+      window.removeEventListener("pointerdown", onPointerDownShiftGuard, true);
     },
   };
 }

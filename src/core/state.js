@@ -57,8 +57,11 @@ export function pageCandidates(state) {
 
 /** @param {ImeState} state */
 export function currentCandidate(state) {
-  const idx = state.pageIndex * state.pageSize;
-  return state.candidates[idx] ?? null;
+  return (
+    state.candidates[state.selectedCandidate] ??
+    state.candidates[state.pageIndex * state.pageSize] ??
+    null
+  );
 }
 
 /** @param {ImeState} state */

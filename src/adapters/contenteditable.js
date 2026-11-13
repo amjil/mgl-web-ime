@@ -119,11 +119,12 @@ export function ContentEditableAdapter(el) {
       if (start <= 0) return;
       const text = el.textContent ?? "";
       const before = text.slice(0, start);
-      const after = text.slice(start);
       const nextBefore = deleteLastGrapheme(before);
       const deleted = before.length - nextBefore.length;
-      el.textContent = nextBefore + after;
-      setOffsets(start - deleted, start - deleted);
+      // Local Range edit — do not rewrite el.textContent (preserves markup / undo).
+      setOffsets(start - deleted, start);
+      const delRange = getRange();
+      if (delRange) delRange.deleteContents();
     },
 
     deleteForward: () => {
@@ -139,9 +140,11 @@ export function ContentEditableAdapter(el) {
       if (start >= text.length) return;
       const after = text.slice(start);
       const parts = graphemes(after);
-      parts.shift();
-      el.textContent = text.slice(0, start) + parts.join("");
-      setOffsets(start, start);
+      const first = parts.shift() ?? "";
+      const delUtf16 = first.length;
+      setOffsets(start, start + delUtf16);
+      const delRange = getRange();
+      if (delRange) delRange.deleteContents();
     },
 
     replaceBeforeCaret: (deleteLen, text) => {
@@ -152,15 +155,13 @@ export function ContentEditableAdapter(el) {
       const { start, end } = range
         ? offsetsFromRange(range)
         : { start: full.length, end: full.length };
-      const before = full.slice(0, start);
-      const after = full.slice(end);
-      const beforeCps = Array.from(before);
-      const del = Math.min(deleteLen ?? 0, beforeCps.length);
-      const nextBefore = beforeCps.slice(0, beforeCps.length - del).join("");
-      const insert = text ?? "";
-      el.textContent = nextBefore + insert + after;
-      const caret = (nextBefore + insert).length;
-      setOffsets(caret, caret);
+      const beforeStr = full.slice(0, start);
+      const cps = Array.from(beforeStr);
+      const del = Math.min(deleteLen ?? 0, cps.length);
+      const keptStr = cps.slice(0, cps.length - del).join("");
+      // Select only [keptStr.length, end] and replace locally — keep surrounding DOM intact.
+      setOffsets(keptStr.length, end);
+      insertAtCaret(text ?? "");
     },
 
     getTextBeforeCaret: () => {

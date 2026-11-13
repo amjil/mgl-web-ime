@@ -461,11 +461,19 @@ export class ImeCore {
       return true;
     }
 
-    if (hasComp && (key === "ArrowDown" || key === "PageDown")) {
+    if (hasComp && key === "ArrowDown") {
+      this.nextCandidate();
+      return true;
+    }
+    if (hasComp && key === "ArrowUp") {
+      this.previousCandidate();
+      return true;
+    }
+    if (hasComp && key === "PageDown") {
       this.nextPage();
       return true;
     }
-    if (hasComp && (key === "ArrowUp" || key === "PageUp")) {
+    if (hasComp && key === "PageUp") {
       this.previousPage();
       return true;
     }
@@ -530,8 +538,11 @@ export class ImeCore {
     const hasComp =
       this.state.composition.length > 0 || this.state.candidates.length > 0;
     if (hasComp) {
-      await this.commitCurrent({ addSpaceAfter: false });
-      return true;
+      // Invalidate in-flight candidate requests so a late response cannot reopen the panel.
+      this._session.next();
+      // Clear composition/candidates only — keep the Mongolian preview already in the editor.
+      this.setState(clearCompositionFields(this.state));
+      this.emit("mgl-ime-composition-end", { text: "" });
     }
     this.adapter.insertText("\n");
     return true;

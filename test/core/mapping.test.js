@@ -160,8 +160,11 @@ describe("state / candidates", () => {
     assert.equal(totalPages(s), 2);
     assert.deepEqual(pageCandidates(s), ["a", "b", "c", "d", "e"]);
     assert.equal(currentCandidate(s), "a");
+    s = { ...s, selectedCandidate: 2 };
+    assert.equal(currentCandidate(s), "c");
     s = shiftPage(s, 1);
     assert.deepEqual(pageCandidates(s), ["f"]);
+    assert.equal(currentCandidate(s), "f");
   });
 });
 
